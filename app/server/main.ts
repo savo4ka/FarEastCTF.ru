@@ -11,11 +11,19 @@ import crypto from 'crypto';
 import { DatabasePost } from '../abstract/post';
 import { Settings } from '../abstract/settings';
 import { DatabaseUser, User } from '../abstract/user';
+import { generate } from './generate';
 
 const PORT = process.env.PORT ?? 3000;
 const DEV_MODE = process.env.NODE_ENV !== 'production';
-// TODO: set secret string from database
-const SECRET = 'fareaaefswstmoectf_e2fsj23kl';
+const { SECRET, ADMIN_PASSWORD } = process.env;
+
+if (!SECRET) {
+  throw new Error('SECRET is not defined in environment variables');
+}
+
+if (!ADMIN_PASSWORD) {
+  throw new Error('ADMIN_PASSWORD is not defined in environment variables');
+}
 
 const NedbStore = NedbStoreInitialization(session);
 const LocalStrategy = PassportLocal.Strategy;
@@ -48,6 +56,9 @@ export { db, app, server };
       })
     )),
   );
+
+  generate(db, { defaultUserPassword: ADMIN_PASSWORD, secret: SECRET });
+
   await app.prepare();
 
   passport.use(new LocalStrategy((username, cleanPassword, done) => {
