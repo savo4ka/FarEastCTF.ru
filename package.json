@@ -59,7 +59,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "nodemon": "^3.1.11",
     "sass": "^1.97.1",
-    "typescript": "^5.9.3",
-    "typescript-plugin-css-modules": "^5.2.0"
+    "typescript": "^5.9.3"
   }
 }
