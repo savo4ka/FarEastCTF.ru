@@ -14,8 +14,7 @@
     "moduleResolution": "node",
     "isolatedModules": false,
     "jsx": "preserve",
-    "outDir": ".build",
-    "plugins": [{ "name": "typescript-plugin-css-modules" }]
+    "outDir": ".build"
   },
   "include": [
     "app/server/**/*.ts",
