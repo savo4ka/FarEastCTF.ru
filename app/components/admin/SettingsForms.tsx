@@ -14,7 +14,7 @@ import {
   BooleanInput,
   ImageField,
 } from 'react-admin';
-import { Typography } from '@material-ui/core';
+import { Typography } from '@mui/material';
 
 const SettingsEdit = (props) => (
   <Edit {...props}>

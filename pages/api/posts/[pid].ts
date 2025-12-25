@@ -1,87 +1,45 @@
 import { Response } from 'express';
-import Database from 'nedb';
-import { DatabasePost, Post } from '../../../app/abstract/post';
+import { Post } from '../../../app/abstract/post';
 import { MyRequest } from '../../../app/abstract/request';
 import { User } from '../../../app/abstract/user';
 
-export const getPost = async (req: MyRequest, pid: string) => {
-  const posts = (req.db.posts as Database<DatabasePost>);
-  const result = new Promise<Post>((resolve) => {
-    posts
-      .findOne({ _id: pid }, (error, post) => {
-        if (error) throw error;
-        if (!post) return resolve(null);
+export const getPost = (req: MyRequest, pid: string): Post | null => {
+  const post = req.db.posts.findOne({ _id: pid });
+  if (!post) return null;
 
-        const { _id, ...data } = post;
-
-        return resolve({
-          id: _id,
-          ...data,
-        });
-      });
-  });
-
-  return result;
+  const { _id, ...data } = post;
+  return {
+    id: _id,
+    ...data,
+  };
 };
 
-export const getPostBySlug = async (req: MyRequest, pid: string) => {
-  const posts = (req.db.posts as Database<DatabasePost>);
-  const result = new Promise<Post>((resolve) => {
-    posts
-      .findOne({ slug: pid }, (error, post) => {
-        if (error) throw error;
-        if (!post) return resolve(null);
+export const getPostBySlug = (req: MyRequest, pid: string): Post | null => {
+  const post = req.db.posts.findOne({ slug: pid });
+  if (!post) return null;
 
-        const { _id, ...data } = post;
-
-        return resolve({
-          id: _id,
-          ...data,
-        });
-      });
-  });
-
-  return result;
+  const { _id, ...data } = post;
+  return {
+    id: _id,
+    ...data,
+  };
 };
 
-export const deletePost = async (req: MyRequest, pid: string) => {
-  const posts = ((req as any).db.posts as Database<DatabasePost>);
-  const result = new Promise<number>((resolve) => {
-    posts
-      .remove({ _id: pid }, (error, n) => {
-        if (error) throw error;
-
-        resolve(n);
-      });
-  });
-
-  return result;
+export const deletePost = (req: MyRequest, pid: string): number => {
+  return req.db.posts.remove({ _id: pid });
 };
 
-export const updatePost = async (req: MyRequest, pid: string) => {
+export const updatePost = (req: MyRequest, pid: string): Post | null => {
   const { _id, ...data } = req.body;
 
-  const posts = ((req as any).db.posts as Database<DatabasePost>);
-  const result = new Promise<Post>((resolve) => {
-    posts
-      .update({ _id: pid }, { $set: data }, {
-        upsert: false,
-        returnUpdatedDocs: true,
-      }, (error, _, post, b) => {
-        if (error) throw error;
-        if (!post) return resolve(null);
+  const updated = req.db.posts.update({ _id: pid }, { $set: data });
+  if (!updated) return null;
 
-        // eslint-disable-next-line no-shadow
-        const { _id, ...data } = post;
-
-        return resolve({
-          id: _id,
-          ...data,
-        });
-      });
-  });
-
-  return result;
+  const { _id: id, ...rest } = updated;
+  return {
+    id,
+    ...rest,
+  };
 };
 
 const handler = async (req: MyRequest, res: Response) => {
@@ -93,7 +51,7 @@ const handler = async (req: MyRequest, res: Response) => {
   if (req.method == 'GET') {
     // GET ONE POST METHOD
 
-    const post = await getPost(req, pid as string);
+    const post = getPost(req, pid as string);
     if (!post) {
       res.status(404).json({ id: null });
       return;
@@ -102,12 +60,12 @@ const handler = async (req: MyRequest, res: Response) => {
     res.status(200).json(post);
   } else if (req.method == 'PUT') {
     if (!user?.admin) res.status(401).end();
-    const updatedPosts = await updatePost(req, pid as string);
+    const updatedPosts = updatePost(req, pid as string);
 
     res.status(200).json(updatedPosts);
   } else if (req.method == 'DELETE') {
     if (!user?.admin) res.status(401).end();
-    const deletedPosts = await deletePost(req, pid as string);
+    const deletedPosts = deletePost(req, pid as string);
 
     res.status(200).json(deletedPosts);
   }

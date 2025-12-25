@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  # Development сервис с hot reload
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: fareastctf-app-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      ADMIN_PASSWORD: "password"
+      SECRET: "secret"
+      NODE_ENV: "development"
+      PORT: 3000
+    volumes:
+      # Монтируем исходный код для hot reload
+      - ./src:/app/src
+      - ./pages:/app/pages
+      - ./public:/app/public
+      - ./styles:/app/styles
+      - ./server:/app/server
+      - ./components:/app/components
+      - ./data:/app/data
+      # Исключаем node_modules и build директории
+      - /app/node_modules
+      - /app/.next
+      - /app/.build
+    networks:
+      - fareastctf-network
+    command: npm run dev
+
+networks:
+  fareastctf-network:
+    driver: bridge

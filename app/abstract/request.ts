@@ -1,19 +1,16 @@
 import { IncomingMessage } from 'http';
-import { Settings } from 'http2';
 import { Request } from 'express';
-import { NextApiRequestCookies } from 'next/dist/next-server/server/api-utils';
+import { NextApiRequestCookies } from 'next/dist/server/api-utils';
 import { PassportStatic } from 'passport';
-import Database from 'nedb';
-import { DatabasePost } from './post';
-import { DatabaseUser } from './user';
+import { postsDb, settingsDb, usersDb } from '../server/database';
 
 type MyRequest = Request & IncomingMessage & {
   cookies: NextApiRequestCookies;
 } & {
   db: {
-    posts: Database<DatabasePost>
-    settings: Database<Settings>
-    user: Database<DatabaseUser>
+    posts: typeof postsDb
+    settings: typeof settingsDb
+    users: typeof usersDb
   },
   passport: PassportStatic,
 }

@@ -1,17 +1,15 @@
 import express from 'express';
 import { json, urlencoded } from 'body-parser';
 import next from 'next';
-import Database from 'nedb';
 import session from 'express-session';
 import passport from 'passport';
 import PassportLocal from 'passport-local';
-import NedbStoreInitialization from 'nedb-session-store';
 import crypto from 'crypto';
 
-import { DatabasePost } from '../abstract/post';
-import { Settings } from '../abstract/settings';
-import { DatabaseUser, User } from '../abstract/user';
+import { User } from '../abstract/user';
 import { generate } from './generate';
+import { postsDb, settingsDb, usersDb, dbConnection } from './database';
+import { BetterSQLiteStore } from './session-store';
 
 const PORT = process.env.PORT ?? 3000;
 const DEV_MODE = process.env.NODE_ENV !== 'production';
@@ -25,16 +23,15 @@ if (!ADMIN_PASSWORD) {
   throw new Error('ADMIN_PASSWORD is not defined in environment variables');
 }
 
-const NedbStore = NedbStoreInitialization(session);
 const LocalStrategy = PassportLocal.Strategy;
 
 const server = express();
 const app = next({ dev: DEV_MODE });
 const handle = app.getRequestHandler();
 const db = {
-  posts: new Database<DatabasePost>({ filename: 'database/posts.db' }),
-  settings: new Database<Settings>({ filename: 'database/settings.db' }),
-  users: new Database<DatabaseUser>({ filename: 'database/users.db' }),
+  posts: postsDb,
+  settings: settingsDb,
+  users: usersDb,
 };
 
 /**
@@ -49,22 +46,14 @@ export { db, app, server };
    * You can use Promise.all to execute all await code concurrently.
   */
 
-  await Promise.all(
-    Object.keys(db).map((key) => (
-      new Promise<void>((resolve) => {
-        db[key].loadDatabase(() => { resolve(); });
-      })
-    )),
-  );
-
-  generate(db, { defaultUserPassword: ADMIN_PASSWORD, secret: SECRET });
+  generate({ defaultUserPassword: ADMIN_PASSWORD, secret: SECRET });
 
   await app.prepare();
 
   passport.use(new LocalStrategy((username, cleanPassword, done) => {
-    const password = crypto.createHmac('sha256', SECRET).update(cleanPassword, 'utf-8').digest('hex');
-    db.users.findOne({ username, password }, (error, user) => {
-      if (error) { return done(error); }
+    try {
+      const password = crypto.createHmac('sha256', SECRET).update(cleanPassword, 'utf-8').digest('hex');
+      const user = db.users.findOne({ username, password });
 
       if (!user) {
         return done(null, false);
@@ -76,7 +65,9 @@ export { db, app, server };
         id: _id,
         ...data,
       });
-    });
+    } catch (error) {
+      return done(error);
+    }
   }));
 
   passport.serializeUser((user, done) => {
@@ -84,9 +75,12 @@ export { db, app, server };
   });
 
   passport.deserializeUser((id, done) => {
-    db.users.findOne({ _id: id }, (err, user) => {
-      done(err, user);
-    });
+    try {
+      const user = db.users.findOne({ _id: id as string });
+      done(null, user || undefined);
+    } catch (err) {
+      done(err);
+    }
   });
 
   server.use(json({ limit: '10mb' }));
@@ -99,8 +93,8 @@ export { db, app, server };
       httpOnly: true,
       maxAge: 7 * 60 * 60 * 1000, // TODO: change this from month to something else
     },
-    store: NedbStore({
-      filename: 'database/session.db',
+    store: new BetterSQLiteStore({
+      db: dbConnection,
     }),
   }));
   server.use(passport.initialize());

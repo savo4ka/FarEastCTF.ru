@@ -1,0 +1,33 @@
+version: '3.9'
+
+services:
+  # Production сервис
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: fareastctf-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      ADMIN_PASSWORD: "password"
+      SECRET: "secret"
+      NODE_ENV: "production"
+      PORT: 3000
+    volumes:
+      # Постоянное хранилище для базы данных nedb
+      - ./data:/app/data
+    networks:
+      - fareastctf-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+networks:
+  fareastctf-network:
+    driver: bridge
