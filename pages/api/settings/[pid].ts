@@ -1,53 +1,30 @@
 import { Response } from 'express';
-import Database from 'nedb';
 import { MyRequest } from '../../../app/abstract/request';
 import { Settings } from '../../../app/abstract/settings';
 import { User } from '../../../app/abstract/user';
 
-export const getSettings = async (req: MyRequest) => {
-  const posts = (req.db.settings as Database<Settings>);
-  const result = new Promise<Settings>((resolve) => {
-    posts
-      .findOne({}, (error, post) => {
-        if (error) throw error;
-        if (!post) return resolve(null);
+export const getSettings = (req: MyRequest): Settings | null => {
+  const settings = req.db.settings.findOne();
+  if (!settings) return null;
 
-        const { _id, ...data } = post;
-
-        return resolve({
-          id: _id,
-          ...data,
-        });
-      });
-  });
-
-  return result;
+  const { _id, ...data } = settings;
+  return {
+    id: _id,
+    ...data,
+  } as Settings;
 };
 
-export const updateSettings = async (req: MyRequest, pid: string) => {
+export const updateSettings = (req: MyRequest, pid: string): Settings | null => {
   const { _id, ...data } = req.body;
 
-  const posts = (req.db.settings as Database<Settings>);
-  const result = new Promise<Settings>((resolve) => {
-    posts
-      .update({ _id: pid }, { $set: data }, {
-        upsert: false,
-        returnUpdatedDocs: true,
-      }, (error, _, post, b) => {
-        if (error) throw error;
-        if (!post) return resolve(null);
+  const updated = req.db.settings.update({ _id: pid }, { $set: data });
+  if (!updated) return null;
 
-        // eslint-disable-next-line no-shadow
-        const { _id, ...data } = post;
-
-        return resolve({
-          id: _id,
-          ...data,
-        });
-      });
-  });
-
-  return result;
+  const { _id: id, ...rest } = updated;
+  return {
+    id,
+    ...rest,
+  } as Settings;
 };
 
 const handler = async (req: MyRequest, res: Response) => {
@@ -63,7 +40,7 @@ const handler = async (req: MyRequest, res: Response) => {
   if (req.method == 'GET') {
     // GET ONE POST METHOD
 
-    const post = await getSettings(req);
+    const post = getSettings(req);
     if (!post) {
       res.status(404).json({ id: null });
       return;
@@ -71,7 +48,7 @@ const handler = async (req: MyRequest, res: Response) => {
 
     res.status(200).json(post);
   } else if (req.method == 'PUT') {
-    const updatedPosts = await updateSettings(req, pid as string);
+    const updatedPosts = updateSettings(req, pid as string);
 
     res.status(200).json(updatedPosts);
   }
